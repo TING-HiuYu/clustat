@@ -1012,6 +1012,12 @@ mod tests {
         assert_eq!(json["nodes"][0]["num"], 4);
         assert_eq!(json["nodes"][0]["gres"].as_array().unwrap().len(), 4);
         assert_eq!(json["nodes"][0]["gres"][3]["mem_total_mb"], 24 * 1024);
+        for index in 0..4 {
+            assert_eq!(
+                json["nodes"][0]["gres"][index]["uuid"],
+                format!("GRES-MOCK-{index}")
+            );
+        }
     }
 
     #[test]

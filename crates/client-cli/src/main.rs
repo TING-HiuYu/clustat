@@ -121,6 +121,7 @@ mod tests {
                         delay_us: None,
                         gres: vec![GresView {
                             index: 0,
+                            uuid: None,
                             name: "NVIDIA A100".to_string(),
                             temperature_c: Some(32),
                             util: 42,
@@ -165,6 +166,7 @@ mod tests {
                         delay_us: None,
                         gres: vec![GresView {
                             index: 0,
+                            uuid: None,
                             name: "NVIDIA A100".to_string(),
                             temperature_c: Some(32),
                             util: 42,

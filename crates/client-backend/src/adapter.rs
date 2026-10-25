@@ -71,6 +71,8 @@ pub struct NodeView {
 pub struct GresView {
     pub index: u8,
     #[serde(default)]
+    pub uuid: Option<String>,
+    #[serde(default)]
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temperature_c: Option<u32>,
@@ -269,6 +271,7 @@ pub fn gres_views_from_snapshot(snapshot: &ServerGresSnapshot) -> Vec<GresView> 
         .iter()
         .map(|gres| GresView {
             index: gres.index,
+            uuid: gres.uuid.clone(),
             name: gres.name.clone(),
             temperature_c: gres.temperature_c,
             util: gres.utilization.gres_percent.min(100),
@@ -358,6 +361,7 @@ fn parse_round1_csv(s: &str) -> Vec<GresView> {
             }
             Some(GresView {
                 index: parts[0].parse().ok()?,
+                uuid: None,
                 name: "GPU".to_string(),
                 temperature_c: None,
                 util: parts[1].parse().ok()?,
@@ -378,6 +382,7 @@ fn parse_round1_server_json(s: &str) -> Option<Vec<GresView>> {
         (0..gres_num.min(u8::MAX as u64))
             .map(|idx| GresView {
                 index: idx as u8,
+                uuid: None,
                 name: "GPU".to_string(),
                 temperature_c: None,
                 util,
@@ -478,6 +483,7 @@ mod tests {
         assert_eq!(decoded.meta.status, "unknown");
         assert_eq!(decoded.nodes[0].hostname, "node-a");
         assert_eq!(decoded.nodes[0].gres[0].util, 42);
+        assert_eq!(decoded.nodes[0].gres[0].uuid, None);
     }
 
     #[test]
@@ -502,6 +508,72 @@ mod tests {
         assert!(node.get("gres").is_some());
         assert!(node.get("gpus").is_none());
         assert_eq!(node["gres"][0]["util"], 75);
+        assert_eq!(node["gres"][0]["uuid"], "GRES-123");
+    }
+
+    #[test]
+    fn query_response_preserves_unknown_uuid_as_null() {
+        let mut rows = CacheMap::new();
+        let mut snapshot = snapshot();
+        snapshot.gres[0].uuid = None;
+        crate::cache::upsert_snapshot(
+            &mut rows,
+            "conn-001",
+            "127.0.0.1:39400".parse().unwrap(),
+            snapshot,
+            None,
+        );
+
+        let json = serde_json::to_value(build_query_response(&rows, None, None)).unwrap();
+        let gres = &json["nodes"][0]["gres"][0];
+        assert!(gres.get("uuid").is_some());
+        assert!(gres["uuid"].is_null());
+    }
+
+    #[test]
+    fn query_preserves_uuid_mapping_after_inventory_changes_and_filters() {
+        let mut rows = CacheMap::new();
+        let addr_a = "127.0.0.1:39400".parse().unwrap();
+        let addr_b = "127.0.0.1:39401".parse().unwrap();
+        let mut snapshot_a = snapshot();
+        let mut snapshot_b = snapshot();
+        snapshot_b.hostname = "node-b".to_string();
+        snapshot_b.gres[0].uuid = Some("GRES-NODE-B".to_string());
+        crate::cache::upsert_snapshot(&mut rows, "conn-b", addr_b, snapshot_b, None);
+
+        for uuids in [
+            vec!["GRES-A", "GRES-B"],
+            vec!["GRES-B", "GRES-C", "GRES-A"],
+            vec!["GRES-C"],
+            vec![],
+        ] {
+            snapshot_a.gres = uuids
+                .iter()
+                .enumerate()
+                .map(|(index, uuid)| {
+                    let mut gres = snapshot().gres.remove(0);
+                    gres.index = index as u8;
+                    gres.uuid = Some((*uuid).to_string());
+                    gres
+                })
+                .collect();
+            crate::cache::upsert_snapshot(&mut rows, "conn-a", addr_a, snapshot_a.clone(), None);
+
+            let user = username_for_uid(1000);
+            let response = build_query_response(&rows, Some("node-a"), Some(&user));
+            assert_eq!(response.nodes.len(), 1);
+            assert_eq!(response.nodes[0].num as usize, uuids.len());
+            for (index, (gres, uuid)) in response.nodes[0].gres.iter().zip(&uuids).enumerate() {
+                assert_eq!(gres.index as usize, index);
+                assert_eq!(gres.uuid.as_deref(), Some(*uuid));
+                assert_eq!(gres.processes.as_ref().unwrap().len(), 1);
+            }
+            let response_b = build_query_response(&rows, Some("node-b"), None);
+            assert_eq!(
+                response_b.nodes[0].gres[0].uuid.as_deref(),
+                Some("GRES-NODE-B")
+            );
+        }
     }
 
     #[test]
@@ -540,6 +612,7 @@ mod tests {
         assert_eq!(views.len(), 1);
         assert_eq!(views[0].util, 75);
         assert_eq!(views[0].mem_total_mb, 81920);
+        assert_eq!(views[0].uuid.as_deref(), Some("GRES-123"));
         let processes = views[0].processes.as_ref().expect("processes");
         assert_eq!(processes[0].uid, 1000);
         assert_eq!(processes[0].used_memory_mb, 512);
@@ -605,6 +678,7 @@ mod tests {
         let views = parse_legacy_gres_views(br#"{"gres_num":2,"avg_utilization":42}"#);
         assert_eq!(views.len(), 2);
         assert_eq!(views[1].util, 42);
+        assert!(views.iter().all(|gres| gres.uuid.is_none()));
     }
 
     #[test]
@@ -613,5 +687,6 @@ mod tests {
         assert_eq!(views.len(), 2);
         assert_eq!(views[0].mem_used_mb, 2048);
         assert_eq!(views[1].util, 76);
+        assert!(views.iter().all(|gres| gres.uuid.is_none()));
     }
 }

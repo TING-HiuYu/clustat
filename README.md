@@ -231,7 +231,7 @@ clustat [OPTIONS]
 - `-i [SEC]`, `--interval [SEC]`: watch 模式，默认 2 秒，最小 0.05 秒。
 - `-n <FILTER>`: 按 hostname、IP 或 connection id 过滤节点。
 - `-user <USER>`: 只显示指定用户相关 GPU 行或进程。
-- `--json`: 输出 JSON。
+- `--json`（或 `-json`）: 输出 JSON，包含每个设备的 `gres[].uuid`；无法获取 UUID 时为 `null`。普通终端视图不显示 UUID。
 - `--no-processes`: 隐藏进程摘要。
 - `-c`, `--show-cmd`: 显示命令。
 - `-u`, `--show-user`: 显示用户名。
@@ -371,6 +371,10 @@ clustat -n 'compute[01-08]'
 clustat -user alice
 clustat --json
 ```
+
+`--json` (also accepted as `-json`) includes each device's full UUID in
+`nodes[].gres[].uuid`, or `null` if unavailable. UUIDs are not shown in the
+normal terminal view.
 
 If the client package creates the compatibility symlink, users can run:
 

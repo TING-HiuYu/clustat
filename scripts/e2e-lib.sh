@@ -305,6 +305,7 @@ def norm_gres(gres):
     for g in gres or []:
         normalized.append({
             'index': g.get('index'),
+            'uuid': g.get('uuid'),
             'name': g.get('name'),
             'mem_total_mb': g.get('mem_total_mb', g.get('memory_total_mb')),
         })

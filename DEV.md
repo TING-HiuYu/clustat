@@ -111,6 +111,14 @@ payload_len 4 bytes  big-endian u32
 
 旧 `DataPayload` 和 `HandshakeInfo` 已从 common 协议层移除；运行期 TCP/UDP 统一使用 `MetadataPayload` 和 `RuntimePayload`。
 
+### 本地 API 与 JSON 输出
+
+backend 的 UDS `QUERY` 响应与 CLI `--json`（或 `-json`）均通过
+`nodes[].gres[].uuid` 返回设备的完整 UUID，未知时保留该键并返回 `null`。
+UUID 从 `HostMetadata` 重建后的快照复制到 `GresView`，不增加 runtime
+报文字段；元数据更新后，设备与 UUID 的对应关系随快照一起更新。两端的
+`GresView` 对缺失的 UUID 使用 `None`，普通终端视图不渲染此字段。
+
 ## UDP transport
 
 文件：`crates/common/src/udp.rs`、`crates/server/src/udp_transport.rs`、`crates/client-backend/src/udp_client.rs`
@@ -307,6 +315,15 @@ TCP and UDP share the same payload types:
 - Graceful close: `Disconnect`.
 
 TCP writes complete binary frames directly to the stream. UDP wraps the same frame bytes in `G4U1` chunks with chunk id, total chunk count, payload length, and neighboring checksums.
+
+### Local API And JSON Output
+
+The backend UDS `QUERY` response and CLI `--json` (or `-json`) expose the full
+device UUID as `nodes[].gres[].uuid`. Unknown UUIDs are serialized as `null`.
+The backend copies UUIDs from snapshots rebuilt with `HostMetadata` into
+`GresView`; runtime packets need no additional fields. Metadata refreshes update
+device-to-UUID mappings with the snapshot. Both view models accept missing UUIDs
+as `None`, and the normal terminal renderer does not display them.
 
 ## Cache Flow
 

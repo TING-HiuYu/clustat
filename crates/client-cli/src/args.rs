@@ -74,7 +74,7 @@ pub fn parse_args(args: Vec<String>) -> Result<CliOptions, String> {
                     }
                 }
             }
-            "--json" => {
+            "--json" | "-json" => {
                 opts.json = true;
             }
             "--force-color" | "--color" => {
@@ -140,7 +140,7 @@ pub fn parse_args(args: Vec<String>) -> Result<CliOptions, String> {
 }
 
 pub fn help_text() -> &'static str {
-    "Usage: clustat [OPTIONS]\n\nOptions:\n  -n <FILTER>                 Filter cluster nodes by hostname/ip/connection id\n  -user <USER>                Filter rendered processes/GPU rows by user\n  --backend-socket <PATH>     Connect to client-backend UDS path\n  --json                      Print cluster data as JSON\n  -i, --interval [SEC]        Watch mode; optional refresh interval in seconds\n  -w, --watch [SEC]           Alias for --interval\n  --color, --force-color      Force ANSI colored output\n  --no-color                  Suppress ANSI colored output\n  --no-header                 Suppress node header lines\n  --gpuname-width <N>         GPU name display width; 0 hides GPU names\n  --no-processes              Hide process summaries\n  -c, --show-cmd              Display process command instead of user\n  -u, --show-user             Display process user with command\n  -p, --show-pid              Display process PID\n  -a, --show-all              Show user, command and PID\n  -h, --help                  Show this help\n  -v, --version               Show version"
+    "Usage: clustat [OPTIONS]\n\nOptions:\n  -n <FILTER>                 Filter cluster nodes by hostname/ip/connection id\n  -user <USER>                Filter rendered processes/GPU rows by user\n  --backend-socket <PATH>     Connect to client-backend UDS path\n  --json, -json               Print cluster data as JSON (includes device UUIDs)\n  -i, --interval [SEC]        Watch mode; optional refresh interval in seconds\n  -w, --watch [SEC]           Alias for --interval\n  --color, --force-color      Force ANSI colored output\n  --no-color                  Suppress ANSI colored output\n  --no-header                 Suppress node header lines\n  --gpuname-width <N>         GPU name display width; 0 hides GPU names\n  --no-processes              Hide process summaries\n  -c, --show-cmd              Display process command instead of user\n  -u, --show-user             Display process user with command\n  -p, --show-pid              Display process PID\n  -a, --show-all              Show user, command and PID\n  -h, --help                  Show this help\n  -v, --version               Show version"
 }
 
 fn required_value<'a>(args: &'a [String], index: usize, flag: &str) -> Result<&'a str, String> {
@@ -235,9 +235,11 @@ mod tests {
 
     #[test]
     fn parses_json_output_flag() {
-        let opts = parse_args(args(&["--json", "-n", "node-a"])).unwrap();
-        assert!(opts.json);
-        assert_eq!(opts.node_filter.as_deref(), Some("node-a"));
+        for flag in ["--json", "-json"] {
+            let opts = parse_args(args(&[flag, "-n", "node-a"])).unwrap();
+            assert!(opts.json);
+            assert_eq!(opts.node_filter.as_deref(), Some("node-a"));
+        }
     }
 
     #[test]
