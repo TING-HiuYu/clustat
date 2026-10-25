@@ -471,6 +471,7 @@ mod tests {
                 delay_us: None,
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 42,
@@ -502,6 +503,7 @@ mod tests {
                 gres: vec![
                     GresView {
                         index: 0,
+                        uuid: None,
                         name: "NVIDIA A100".to_string(),
                         temperature_c: Some(32),
                         util: 42,
@@ -511,6 +513,7 @@ mod tests {
                     },
                     GresView {
                         index: 1,
+                        uuid: None,
                         name: "NVIDIA A100".to_string(),
                         temperature_c: Some(32),
                         util: 77,
@@ -546,6 +549,7 @@ mod tests {
                 delay_us: Some(280),
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 42,
@@ -587,6 +591,7 @@ mod tests {
                 delay_us: None,
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 42,
@@ -625,6 +630,7 @@ mod tests {
                 delay_us: None,
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 42,
@@ -661,6 +667,7 @@ mod tests {
                 delay_us: None,
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 66,
@@ -709,6 +716,7 @@ mod tests {
                 delay_us: None,
                 gres: vec![GresView {
                     index: 0,
+                    uuid: None,
                     name: "NVIDIA A100".to_string(),
                     temperature_c: Some(32),
                     util: 42,
@@ -748,5 +756,30 @@ mod tests {
         let decoded: serde_json::Value = serde_json::from_str(&rendered).expect("valid json");
         assert_eq!(decoded["meta"]["status"], "unknown");
         assert_eq!(decoded["nodes"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn uuid_is_preserved_in_json_without_changing_terminal_output() {
+        let raw = r#"{"nodes":[{"hostname":"node-a","gres":[{"index":0,"uuid":"GPU-12345678-1234-1234-1234-123456789abc","name":"NVIDIA Test GPU","util":42,"mem_used_mb":1024,"mem_total_mb":8192},{"index":1,"uuid":null,"name":"NVIDIA Test GPU","util":0,"mem_used_mb":0,"mem_total_mb":8192}]}]}"#;
+        let mut resp = crate::backend::decode_response(raw).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&render_json(&resp).unwrap()).unwrap();
+        assert_eq!(
+            json["nodes"][0]["gres"][0]["uuid"],
+            "GPU-12345678-1234-1234-1234-123456789abc"
+        );
+        assert!(json["nodes"][0]["gres"][1].get("uuid").is_some());
+        assert!(json["nodes"][0]["gres"][1]["uuid"].is_null());
+
+        for color in [false, true] {
+            let opts = RenderOptions {
+                color,
+                ..RenderOptions::default()
+            };
+            let with_uuid = render_table(&resp, None, &opts);
+            assert!(!with_uuid.contains("GPU-12345678"));
+            let uuid = resp.nodes[0].gres[0].uuid.take();
+            assert_eq!(with_uuid, render_table(&resp, None, &opts));
+            resp.nodes[0].gres[0].uuid = uuid;
+        }
     }
 }

@@ -67,6 +67,8 @@ pub struct NodeView {
 pub struct GresView {
     pub index: u8,
     #[serde(default)]
+    pub uuid: Option<String>,
+    #[serde(default)]
     pub name: String,
     #[serde(default)]
     pub temperature_c: Option<u32>,
@@ -224,6 +226,25 @@ mod tests {
         assert_eq!(resp.nodes[0].hostname, "node-a");
         assert!(!resp.nodes[0].stale);
         assert_eq!(resp.nodes[0].gres[0].processes, None);
+        assert_eq!(resp.nodes[0].gres[0].uuid, None);
+    }
+
+    #[test]
+    fn backend_response_preserves_uuid_and_null_on_json_roundtrip() {
+        let raw = r#"{"nodes":[{"hostname":"node-a","gres":[{"index":0,"uuid":"GPU-12345678-1234-1234-1234-123456789abc","util":42,"mem_used_mb":1024,"mem_total_mb":8192},{"index":1,"uuid":null,"util":0,"mem_used_mb":0,"mem_total_mb":8192}]}]}"#;
+        let resp = decode_response(raw).expect("decode UUID response");
+        assert_eq!(
+            resp.nodes[0].gres[0].uuid.as_deref(),
+            Some("GPU-12345678-1234-1234-1234-123456789abc")
+        );
+        assert_eq!(resp.nodes[0].gres[1].uuid, None);
+        let json = serde_json::to_value(&resp).unwrap();
+        assert_eq!(
+            json["nodes"][0]["gres"][0]["uuid"],
+            resp.nodes[0].gres[0].uuid.as_deref().unwrap()
+        );
+        assert!(json["nodes"][0]["gres"][1].get("uuid").is_some());
+        assert!(json["nodes"][0]["gres"][1]["uuid"].is_null());
     }
 
     #[test]
