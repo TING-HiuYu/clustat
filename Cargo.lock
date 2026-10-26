@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "clustat-client-backend"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "base64",
  "chrono",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "clustat-client-cli"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "common",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "clustat-server"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "crc32fast",
  "rkyv",

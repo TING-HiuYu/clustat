@@ -47,7 +47,9 @@ pub fn parse_args(args: Vec<String>) -> Result<CliOptions, String> {
     while i < args.len() {
         match args[i].as_str() {
             "-h" | "--help" => return Err(help_text().to_string()),
-            "-v" | "--version" => return Err("clustat 1.0.0".to_string()),
+            "-v" | "--version" => {
+                return Err(format!("clustat {}", env!("CARGO_PKG_VERSION")));
+            }
             "-n" => {
                 i += 1;
                 opts.node_filter = Some(required_value(&args, i, "-n")?.to_string());
